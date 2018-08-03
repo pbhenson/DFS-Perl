@@ -2,7 +2,7 @@
 #
 # Paul Henson <henson@acm.org>
 #
-# Copyright (c) 1997 Paul Henson -- see COPYRIGHT file for details
+# Copyright (c) 1997,1998 Paul Henson -- see COPYRIGHT file for details
 #
 
 use DCE::DFS;
@@ -74,6 +74,8 @@ while ($ftserver = $flserver->ftserver) {
 	
 	print "\n";
 	print "       Aggregate total:     $aggr_ft filesets\n";
+        printf("                            %s used / %s available (", fmt_size($aggr_ft_used), fmt_size($aggr->size));
+	printf("%0.2f%%)\n", ($aggr_ft_used/$aggr->size)*100);
         printf("                            %s used / %s allocated (", fmt_size($aggr_ft_used), fmt_size($aggr_ft_alloc));
 	printf("%0.2f%%)\n", ($aggr_ft_used/$aggr_ft_alloc)*100);
 	print "                            ";
@@ -98,6 +100,8 @@ while ($ftserver = $flserver->ftserver) {
 
     print "    Fileserver total:     $serv_ag aggregates\n";
     print "                          $serv_ft filesets\n";
+    printf("                          %s used / %s available (", fmt_size($serv_ft_used), fmt_size($serv_ag_size));
+    printf("%0.2f%%)\n", ($serv_ft_used/$serv_ag_size)*100);
     printf("                          %s used / %s allocated (", fmt_size($serv_ft_used), fmt_size($serv_ft_alloc));
     printf("%0.2f%%)\n", ($serv_ft_used/$serv_ft_alloc)*100);
     print "                          ";
@@ -109,6 +113,8 @@ while ($ftserver = $flserver->ftserver) {
 print "  Cell total:     $cell_fts fileservers\n";
 print "                  $cell_ag aggregates\n";
 print "                  $cell_ft filesets\n";
+printf("                  %s used / %s available (", fmt_size($cell_ft_used), fmt_size($cell_ag_size));
+printf("%0.2f%%)\n", ($cell_ft_used/$cell_ag_size)*100);
 printf("                  %s used / %s allocated (", fmt_size($cell_ft_used), fmt_size($cell_ft_alloc));
 printf("%0.2f%%)\n", ($cell_ft_used/$cell_ft_alloc)*100);
 print "                  ";

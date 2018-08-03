@@ -2,11 +2,11 @@
 Introduction
 ------------
 
-DFS-Perl is a perl module interface that tries to accomplish two things:
-first, it provides a simple API to view and modify DFS ACLs, and second, it
-provides classes to manipulate DFS internals, such as fileservers,
-aggregates, and filesets. Access to DFS state is mostly read-only.
-Currently, the only thing DFS-Perl can modify is fileset quota.
+DFS-Perl is a perl module interface to DFS internals. It includes both a
+simple API to manipulate DFS ACLs, and also methods for accessing DFS
+servers, such as the flserver and ftserver. Most aspects of DFS-Perl are
+read-only; however, DFS-Perl does allow you to change fileset quotas and
+create/delete mount points directly from perl.
 
 
 Installation
@@ -17,18 +17,12 @@ configured on your system.
 
 DCE-Perl is available via CPAN, or via the URL:
 
-http://www.osf.org/~dougm/perl/
+http://www.intranet.csupomona.edu/~henson/www/projects/DCE-Perl/
 
 
-The lastest version of DCE-Perl available as of this writing is 0.14,
-which has a bug in the ACL module. If a new fixed version is not 
-yet available, you need to apply the patch in the file
-DCE-Perl-0.14.diff by running the following commands before building
-and installing DCE-Perl:
-
-     cd /path/to/DCE-Perl-0.14
-     patch -p1 -d . < /path/to/DFS-Perl-0.15/DCE-Perl-0.14.diff 
-
+The lastest version of DCE-Perl available as of this writing is 0.16.
+Earlier versions will not work with this release of DFS-Perl, although
+later versions probably will.
 
 Once DCE-Perl has been successfully installed, you need to read the file
 README.LIBDCEDFS and verify that libdcedfs.a and the necessary header files
@@ -38,7 +32,7 @@ are available on your system.
 Once these prerequisites are met, you can build and install DFS-Perl by
 running the following commands:
 
-     cd /path/to/DFS-Perl-0.15
+     cd /path/to/DFS-Perl-0.20
      perl Makefile.PL
      make
      make install
@@ -47,8 +41,37 @@ running the following commands:
 Changes
 -------
 
+0.20 - Added ability to pass in an open registry handle to ACL bind method.
+       Useful when used in account creation scripts when a connection
+       to the master registry is needed. If no handle is supplied, the
+       default registry handle will be used.
+
+       Added exception handling for DFS RPCs, and fault tolerance for
+       flserver calls.
+
+       New methods:
+
+         -- DCE::DFS::crmount(), for creating mount points
+
+         -- DCE::DFS::delmount(), for deleting mount points
+
+         -- DCE::DFS::aggregate::ftserver(), to acquire an ftserver object
+            from an aggregate object
+
+         -- DCE::DFS::fileset::ftserver(), to acquire an ftserver object
+            from a fileset object
+
+         -- DCE::DFS::fileset::aggregate(), to acquire an aggregate object
+            from a fileset object
+
+       Added skeleton of documentation.
+
+       Minor updates to dfs_usage.pl
+
+
 0.15 - Beta release including new classes to interface to DFS flservers,
        ftservers, aggregates, and filesets.
+
 
 0.10 - First publicly released version.
 
@@ -61,10 +84,6 @@ Please report any bugs or feature requests to <henson@acm.org>.
 DFS-Perl and DCE-Perl have a mailing list available for discussion and
 announcements. To subscribe, send email to <majordomo@lists.csupomona.edu>
 with a body of "subscribe dce-perl".
-
-I'd also be very interested to hear that you're using DFS-Perl. If you
-could send me an email describing how you use DCE/DFS at your site, and
-what value you receive from DFS-Perl, I'd really appreciate it.
 
 
 The latest version of DFS-Perl is currently available at

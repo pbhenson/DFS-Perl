@@ -1,9 +1,9 @@
 #
-# DFS-Perl version 0.15
+# DFS-Perl version 0.20
 #
 # Paul Henson <henson@acm.org>
 #
-# Copyright (c) 1997 Paul Henson -- see COPYRIGHT file for details
+# Copyright (c) 1997,1998 Paul Henson -- see COPYRIGHT file for details
 #
 
 package DCE::DFS;
@@ -23,7 +23,7 @@ require AutoLoader;
 
 @EXPORT = qw();
 
-$VERSION = '0.15';
+$VERSION = '0.20';
 
 sub AUTOLOAD {
     my $constname;
@@ -49,7 +49,7 @@ sub type_default_object {1}
 sub type_default_container {2}
 
 sub acl {
-    my ($path, $acl_type) = @_;
+    my ($path, $acl_type, $rgy) = @_;
     my $self = {};
     $self->{acl_type} = ($acl_type ne "") ? ($acl_type) : type_object;
     my $entry;
@@ -62,8 +62,11 @@ sub acl {
 
     $self->{manager} = $self->{acl_h}->get_manager_types->[0];
 
-    ($self->{rgy}, $status) = DCE::Registry->site_open_query("");
-    return (undef, $status) if $status;
+    
+    if (!($self->{rgy} = $rgy)) {
+	($self->{rgy}, $status) = DCE::Registry->site_default();
+	return (undef, $status) if $status;
+    }
 
     ($self->{acl_list}, $status) = $self->{acl_h}->lookup($self->{manager},
 							  $self->{acl_type});
@@ -288,22 +291,203 @@ __END__
 
 =head1 NAME
 
-DCE::DFS - Perl extension interfacing with DFS
+DCE::DFS - Perl module interface to DFS internals
 
 =head1 SYNOPSIS
 
-  use DCE::DFS;
+use DCE::DFS;
 
 =head1 DESCRIPTION
 
-To be done later.
+
+
+=head1 General DFS methods
+
+
+
+=over 4
+
+=item DCE::DFS::cellname(path)
+
+
+
+=item DCE::DFS::crmount(path, fileset, read_write)
+
+
+
+=item DCE::DFS::delmount(path)
+
+
+
+=item DCE::DFS::fid(path)
+
+
+
+=back
+
+=head1 ACL stuff
+
+
+
+=over 4
+
+=item DCE::DFS::acl(path, acl_type, registry_handle);
+
+
+
+=item $acl->entries()
+
+
+
+=item $acl->entry(entry_key)
+
+
+
+=item $acl->modify(entry_key, permissions)
+
+
+
+=item $acl->delete(entry_key)
+
+
+
+=item $acl->deleteall()
+
+
+
+=item $acl->calc_mask()
+
+
+
+=item $acl->commit()
+
+
+
+=back
+
+=head1 FLDB methods
+
+
+
+=over 4
+
+=item DCE::DFS::flserver(cell_fs)
+
+
+
+=item $flserver->ftserver()
+
+
+
+=item $flserver->fileset_mask_reset()
+
+
+
+=item $flserver->fileset_mask_ftserver(ftserver)
+
+
+
+=item $flserver->fileset_mask_aggregate(aggregate)
+
+
+
+=item $flserver->fileset()
+
+
+
+=item $flserver->fileset_by_name(name)
+
+
+
+=item $flserver->fileset_by_id(fid)
+
+
+
+=back
+
+=head1 ftserver methods
+
+
+
+=over 4
+
+=item $ftserver->address()
+
+
+
+=item $ftserver->hostname()
+
+
+
+=item $ftserver->aggregate()
+
+
+
+=back
+
+=head1 aggregate methods
+
+
+
+=over 4
+
+=item $aggregate->ftserver()
+
+
+=item $aggregate->name()
+
+
+
+=item $aggregate->device()
+
+
+
+=item $aggregate->id()
+
+
+
+=item $aggregate->type()
+
+
+
+=item $aggregate->size()
+
+
+
+=item $aggregate->free()
+
+
+
+=back
+
+=head1 fileset methods
+
+
+
+=over 4
+
+=item $fileset->ftserver()
+
+=item $fileset->aggregate()
+
+=item $fileset->name()
+
+=item $fileset->quota()
+
+=item $fileset->used()
+
+=item $fileset->set_quota(quota)
+
+=item $fileset->update()
+
+=back
 
 =head1 AUTHOR
 
-Paul Henson, <henson@acm.org>
+Paul Henson <henson@acm.org>
 
 =head1 SEE ALSO
 
-perl(1).
+perl(1), DCE::*.
 
 =cut
