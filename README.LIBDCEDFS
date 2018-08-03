@@ -4,12 +4,12 @@ header files, usually in /usr/include/dcedfs, and the client side RPC stubs
 for the various DFS servers, generally in the library libdcedfs. Different
 vendors may include one, both, or neither of the two.
 
-In particular, for Solaris 2.6/Transarc DCE 2.0 (the development platform
-for DFS-Perl), Transarc includes the necessary DFS header files, but does not
-include libdcedfs. At this time, Transarc is planning to distribute the
-necessary library, but has not yet done so. For the latest status on this
-issue, contact your Transarc technical support representative.
+Having finally seen the light, IBM/Transarc has made available the
+necessary components to access the DFS API under Solaris and AIX. You can
+download the appropriate distribution from:
 
-The default DFS-Perl configuration assumes libdcedfs.a is located in
-/usr/local/lib. If that is not correct at your site, you need to change the
-path in Makefile.PL to the correct location of libdcedfs.
+    http://www.transarc.ibm.com/Product/EFS/DFS/libdcedfs/
+
+
+Note that the distribution names the library libdfs. DFS-Perl expects the
+library to be named libdcedfs. Rename it or make a symlink.

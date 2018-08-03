@@ -17,27 +17,21 @@ configured on your system.
 
 DCE-Perl is available via CPAN, or via the URL:
 
-http://www.csupomona.edu/~henson/www/projects/DCE-Perl/
-
-
-The lastest version of DCE-Perl available as of this writing is 0.19.
-If you are using an earlier version of DCE-Perl, please upgrade before
-proceeding.
+    http://www.csupomona.edu/~henson/www/projects/DCE-Perl/
 
 
 Once DCE-Perl has been successfully installed, you need to read the file
-README.LIBDCEDFS and verify that libdcedfs.a and the necessary header files
+README.LIBDCEDFS and verify that libdcedfs and the necessary header files
 are available on your system. If you are unable to acquire or build an
-appropriate libdcedfs.a, you can build an ACL only version of DFS-Perl by
+appropriate libdcedfs, you can build an ACL only version of DFS-Perl by
 typing "rm DFS.xs; ln -s DFS-crippled.xs DFS.xs" in the distribution
-directory, and removing the reference to libdcedfs.a from Makefile.PL
-before proceeding.
+directory, and removing -ldcedfs from Makefile.PL before proceeding.
 
 
 Once these prerequisites are met, you can build and install DFS-Perl by
 running the following commands:
 
-     cd /path/to/DFS-Perl-0.35
+     cd /path/to/DFS-Perl-0.50
      perl Makefile.PL
      make
      make install
@@ -45,6 +39,15 @@ running the following commands:
 
 Changes
 -------
+
+0.50 - Updated to work with the IBM/Transarc DFS API distribution.
+
+     - Updated for Perl v5.6.x
+
+     - Fixed bug in ACL code that confused users and groups with
+       the same name. Thanks to Larry Schnitzer <lps@buffalo.edu>
+       for reporting the bug and supplying the fix.
+
 
 0.35 - fileset, flserver and ftserver objects enhanced to include
        information about RW, RO, and BK filesets in various locations,
@@ -147,4 +150,4 @@ with a body of "subscribe dce-perl".
 
 The latest version of DFS-Perl is currently available at
 
-http://www.csupomona.edu/~henson/www/projects/DFS-Perl/
+    http://www.csupomona.edu/~henson/www/projects/DFS-Perl/

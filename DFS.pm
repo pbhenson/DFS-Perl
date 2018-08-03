@@ -1,9 +1,9 @@
 #
-# DFS-Perl version 0.35
+# DFS-Perl version 0.50
 #
 # Paul Henson <henson@acm.org>
 #
-# Copyright (c) 1997,1998,1999 Paul Henson -- see COPYRIGHT file for details
+# Copyright (c) 1997-2001 Paul Henson -- see COPYRIGHT file for details
 #
 
 package DCE::DFS;
@@ -23,7 +23,7 @@ require AutoLoader;
 
 @EXPORT = qw();
 
-$VERSION = '0.35';
+$VERSION = '0.50';
 
 sub AUTOLOAD {
     my $constname;
@@ -329,7 +329,6 @@ sub DCE::DFS::acl::commit {
     if (!($self->{entries}{mask_obj})) {
 	$self->calc_mask;
     }
-
     $self->{acls}->delete;
 
     foreach $entry_key (keys %{$self->{entries}}) {
@@ -366,8 +365,8 @@ sub name_to_id {
     my $entry_uuid;
     my $status;
 
-    if ($self->{pgo_uuids}{$entry_name}) {
-	return ($self->{pgo_uuids}{$entry_name}, 0);
+    if ($self->{pgo_uuids}{$entry_type}{$entry_name}) {
+	return ($self->{pgo_uuids}{$entry_type}{$entry_name}, 0);
     }
 
     if ($entry_type eq "user") {
@@ -408,7 +407,7 @@ sub name_to_id {
 
     return (undef, $status) if $status;
 
-    $self->{pgo_uuids}{$entry_name} = $entry_uuid;
+    $self->{pgo_uuids}{$entry_type}{$entry_name} = $entry_uuid;
 
     return ($entry_uuid, 0);
 }

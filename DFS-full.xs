@@ -15,6 +15,7 @@ extern "C" {
 #include <time.h>
 #include <errno.h>
 #include <netinet/in.h>
+#include <netdb.h>
 #include <arpa/inet.h>
 #include <dce/dce_error.h>
 #include <dce/rpc.h>
@@ -23,26 +24,17 @@ extern "C" {
 #include <dce/sec_login.h>
 #include <dce/pthread.h>
 #include <dcedfs/param.h>
-#include <dcedfs/stds.h>
-#include <dcedfs/common_data.h>
-#include <dcedfs/sysincludes.h>
-#include <dcedfs/ftserver_proc.h>
-#include <dcedfs/queue.h> 
-#include <dcedfs/volume.h>
-#include <dcedfs/vol_errs.h>
-#include <dcedfs/rep_errs.h>
-#include <dcedfs/fldb_data.h>
+#include <dcedfs/afsvl_proc.h>
+#include <dcedfs/aggr.h>
+#include <dcedfs/cm.h>
+#include <dcedfs/fldb_proc.h>
 #include <dcedfs/flserver.h>
 #include <dcedfs/ftserver.h>
-#include <dcedfs/ftserver_trans.h>
-#include <dcedfs/compat.h>
+#include <dcedfs/ftserver_proc.h>
 #include <dcedfs/ioctl.h>
-#include <dcedfs/fldb_proc.h>
-#include <dcedfs/cm.h>
-#include <dcedfs/ftserver_data.h>
-#include <dcedfs/aggr.h>
-#include <dcedfs/afs4int.h>
-#include <dcedfs/rep_data.h>
+#include <dcedfs/vol_init.h>
+#include <dcedfs/rep_errs.h>
+#include <dcedfs/vol_errs.h>
 #include "EXTERN.h"
 #include "perl.h"
 #include "XSUB.h"
@@ -348,7 +340,7 @@ cellname(path)
        if (!pioctl(path, VIOC_FILE_CELL_NAME, &ioctl_buf, 1))
          ST(0) = sv_2mortal(newSVpv(cellname, strlen(cellname)));
        else
-         ST(0) = &sv_undef;
+         ST(0) = &PL_sv_undef;
 
 
 int
@@ -461,7 +453,7 @@ fid(path)
       struct afs_ioctl ioctl_buf;
       DCE__DFS__fid fid;
       error_status_t status = 0;
-      SV *sv = &sv_undef;
+      SV *sv = &PL_sv_undef;
 
       if (!(fid = (DCE__DFS__fid)malloc(sizeof(struct afsFid))))
 	status = sec_s_no_memory;
@@ -494,7 +486,7 @@ flserver(cell_fs = "/.:/fs")
 
        if (!(flserver = (DCE__DFS__flserver)malloc(sizeof(flserver_obj))))
 	 {
-	   sv = &sv_undef;
+	   sv = &PL_sv_undef;
 	   XPUSHs(sv);
 	   sv = sv_2mortal(newSViv(sec_s_no_memory));
 	   XPUSHs(sv);
@@ -513,7 +505,7 @@ flserver(cell_fs = "/.:/fs")
 	   if ( (status) || (flserver->flserver_h_count == 0) )
 	     {
 	       free(flserver);
-	       sv = &sv_undef;
+	       sv = &PL_sv_undef;
 	       XPUSHs(sv);
 	       sv = sv_2mortal(newSViv((status) ? (status) : (-1)));
 	       XPUSHs(sv);
@@ -581,33 +573,22 @@ ftserver(flserver)
        DCE__DFS__ftserver ftserver;
        error_status_t status = 0;
        int index;
-       SV *sv = &sv_undef;
+       SV *sv = &PL_sv_undef;
        
        if (flserver->site_index >= flserver->site_count)
 	 {   
 	   for(index = 0; index < flserver->flserver_h_count; index++)
 	     {
-	       int raised = 0;
+	       error_status_t reset_status;
 	       
-	       TRY
-		 status = VL_GenerateSites(flserver->flserver_h[flserver->flserver_h_index],
-					   flserver->site_start, &flserver->site_nextstart,
-					   &flserver->site_info, &flserver->site_count);
-	       CATCH_ALL
-		 status = THIS_CATCH->status.status;
-	       raised = 1;
-	       ENDTRY
-		 
-		 if (!raised)
-		   break;
+	       status = VL_GenerateSites(flserver->flserver_h[flserver->flserver_h_index],
+					 flserver->site_start, &flserver->site_nextstart,
+					 &flserver->site_info, &flserver->site_count);
 	       
-	       if ((status >= rpc_s_mod) && (status <= (rpc_s_mod+4096)))
-		 {
-		   error_status_t reset_status;
-		   
-		   rpc_binding_reset(flserver->flserver_h[flserver->flserver_h_index], &reset_status);
-		 }
+	       if (!(status >= rpc_s_mod && status <= rpc_s_mod+4096))
+		 break;
 	       
+	       rpc_binding_reset(flserver->flserver_h[flserver->flserver_h_index], &reset_status);
 	       flserver->flserver_h_index = ((flserver->flserver_h_index + 1) % flserver->flserver_h_count);
 	     }
 	   
@@ -652,7 +633,7 @@ ftserver_by_name(flserver, name)
        error_status_t status;
        u_long addr = 0;
        struct hostent *host;
-       SV *sv = &sv_undef;
+       SV *sv = &PL_sv_undef;
        
        if ((int)(addr = inet_addr(name)) == -1)
 	 if (host = gethostbyname(name))
@@ -729,32 +710,22 @@ fileset(flserver)
        error_status_t status = 0;
        unsigned32 dummy, dummy2;
        int index;
-       SV *sv = &sv_undef;
+       SV *sv = &PL_sv_undef;
        
        if (flserver->entry_index >= flserver->entry_info.bulkentries_len)
 	 {
 	   for(index = 0; index < flserver->flserver_h_count; index++)
 	     {
-	       int raised = 0;
+	       error_status_t reset_status;
 
-	       TRY
-		 status = VL_ListByAttributes(flserver->flserver_h[flserver->flserver_h_index], &flserver->attributes, flserver->entry_start,
-					      &dummy, &flserver->entry_info, &flserver->entry_nextstart, &dummy2);
-	       CATCH_ALL
-		 status = THIS_CATCH->status.status;
-	       raised = 1;
-	       ENDTRY
-		 
-		 if (!raised)
-		   break;
+	       status = VL_ListByAttributes(flserver->flserver_h[flserver->flserver_h_index],
+					    &flserver->attributes, flserver->entry_start,
+					    &dummy, &flserver->entry_info, &flserver->entry_nextstart, &dummy2);
 	       
-	       if ((status >= rpc_s_mod) && (status <= (rpc_s_mod+4096)))
-		 {
-		   error_status_t reset_status;
+	       if (!(status >= rpc_s_mod && status <= rpc_s_mod+4096))
+		 break;
 		   
-		   rpc_binding_reset(flserver->flserver_h[flserver->flserver_h_index], &reset_status);
-		 }
-	       
+	       rpc_binding_reset(flserver->flserver_h[flserver->flserver_h_index], &reset_status);
 	       flserver->flserver_h_index = ((flserver->flserver_h_index + 1) % flserver->flserver_h_count);
 	     }
 	   
@@ -815,32 +786,21 @@ fileset_by_name(flserver, name)
      {
        error_status_t status;
        DCE__DFS__fileset fileset;
-       SV *sv = &sv_undef;
+       SV *sv = &PL_sv_undef;
        int index;
 
        if (fileset = (DCE__DFS__fileset)malloc(sizeof(fileset_obj)))
 	 {
 	   for(index = 0; index < flserver->flserver_h_count; index++)
 	     {
-	       int raised = 0;
+	       error_status_t reset_status;
 
-	       TRY
-		 status = VL_GetEntryByName(flserver->flserver_h[flserver->flserver_h_index], name, &fileset->entry);
-	       CATCH_ALL
-		 status = THIS_CATCH->status.status;
-	         raised = 1;
-	       ENDTRY
+	       status = VL_GetEntryByName(flserver->flserver_h[flserver->flserver_h_index], name, &fileset->entry);
 
-	       if (!raised)
+	       if (!(status >= rpc_s_mod && status <= rpc_s_mod+4096))
 		 break;
-
-	       if ((status >= rpc_s_mod) && (status <= (rpc_s_mod+4096)))
-		 {
-		   error_status_t reset_status;
-
-		   rpc_binding_reset(flserver->flserver_h[flserver->flserver_h_index], &reset_status);
-		 }
-
+	       
+	       rpc_binding_reset(flserver->flserver_h[flserver->flserver_h_index], &reset_status);
 	       flserver->flserver_h_index = ((flserver->flserver_h_index + 1) % flserver->flserver_h_count);
 	     }
  
@@ -894,32 +854,21 @@ fileset_by_id(flserver, fid)
      {
        error_status_t status;
        DCE__DFS__fileset fileset;
-       SV *sv = &sv_undef;
+       SV *sv = &PL_sv_undef;
        int index;
        
        if (fileset = (DCE__DFS__fileset)malloc(sizeof(fileset_obj)))
 	 {
 	   for(index = 0; index < flserver->flserver_h_count; index++)
 	     {
-	       int raised = 0;
+	       error_status_t reset_status;
 
-	       TRY
-		 status = VL_GetEntryByID(flserver->flserver_h[0], &fid->Volume, -1, &fileset->entry);
-	       CATCH_ALL
-		 status = THIS_CATCH->status.status;
-	         raised = 1;
-	       ENDTRY
+	       status = VL_GetEntryByID(flserver->flserver_h[0], &fid->Volume, -1, &fileset->entry);
 
-	       if (!raised)
+	       if (!(status >= rpc_s_mod && status <= rpc_s_mod+4096))
 		 break;
-
-	       if ((status >= rpc_s_mod) && (status <= (rpc_s_mod+4096)))
-		 {
-		   error_status_t reset_status;
 		   
-		   rpc_binding_reset(flserver->flserver_h[flserver->flserver_h_index], &reset_status);
-		 }
-	       
+	       rpc_binding_reset(flserver->flserver_h[flserver->flserver_h_index], &reset_status);
 	       flserver->flserver_h_index = ((flserver->flserver_h_index + 1) % flserver->flserver_h_count);
 	     }
 	   
@@ -983,7 +932,7 @@ address(ftserver)
        if (address)
 	 ST(0) = sv_2mortal(newSVpv(address, strlen(address)));
        else
-	 ST(0) = &sv_undef;
+	 ST(0) = &PL_sv_undef;
      }
 
 void
@@ -1004,7 +953,7 @@ hostname(ftserver)
        if (retval)
 	 ST(0) = sv_2mortal(newSVpv(retval, strlen(retval)));
        else
-	 ST(0) = &sv_undef;
+	 ST(0) = &PL_sv_undef;
      }
 
 
@@ -1015,21 +964,17 @@ aggregate(ftserver)
      {
        DCE__DFS__aggregate aggr;
        error_status_t status = 0;
-       SV *sv = &sv_undef;
+       SV *sv = &PL_sv_undef;
        
        if (ftserver->aggr_index >= ftserver->aggr_entries.ftserver_aggrList_len)
 	 {
-	   TRY
-	     status = FTSERVER_ListAggregates(ftserver->ftserver_h, &ftserver->aggr_start,
-					      &ftserver->aggr_nextstart, &ftserver->aggr_entries);
-	   CATCH_ALL
-	     status = THIS_CATCH->status.status;
-	   ENDTRY
+	   status = FTSERVER_ListAggregates(ftserver->ftserver_h, &ftserver->aggr_start,
+					    &ftserver->aggr_nextstart, &ftserver->aggr_entries);
 	     
-	     if (ftserver->aggr_start.index == ftserver->aggr_nextstart.index)
-	       ftserver->aggr_start.index = ftserver->aggr_nextstart.index = 0;
-	     else
-	       ftserver->aggr_start = ftserver->aggr_nextstart;
+	   if (ftserver->aggr_start.index == ftserver->aggr_nextstart.index)
+	     ftserver->aggr_start.index = ftserver->aggr_nextstart.index = 0;
+	   else
+	     ftserver->aggr_start = ftserver->aggr_nextstart;
 	   
 	   ftserver->aggr_index = 0;
 	 }
@@ -1038,26 +983,22 @@ aggregate(ftserver)
 	   {
 	     if (aggr = (DCE__DFS__aggregate)malloc(sizeof(aggregate_obj)))
 	       {
-		 TRY
-		   status = FTSERVER_AggregateInfo(ftserver->ftserver_h,
-						   ftserver->aggr_entries.ftserver_aggrEntries_val[ftserver->aggr_index].Id,
-						   &aggr->aggr_info);
-		 CATCH_ALL
-		   status = THIS_CATCH->status.status;
-		 ENDTRY
-		   
-		   if (!status)
-		     {
-		       rpc_binding_copy(ftserver->ftserver_h, &aggr->ftserver_h, &status);
-		       aggr->addr = ftserver->addr;
-		       aggr->id = ftserver->aggr_entries.ftserver_aggrEntries_val[ftserver->aggr_index].Id;
-		       sv = sv_newmortal();
-		       sv_setref_pv(sv, "DCE::DFS::aggregate", (void *)aggr);
-		     }
-		   else
-		     {
-		       free(aggr);
-		     }
+		 status = FTSERVER_AggregateInfo(ftserver->ftserver_h,
+						 ftserver->aggr_entries.ftserver_aggrEntries_val[ftserver->aggr_index].Id,
+						 &aggr->aggr_info);
+		 
+		 if (!status)
+		   {
+		     rpc_binding_copy(ftserver->ftserver_h, &aggr->ftserver_h, &status);
+		     aggr->addr = ftserver->addr;
+		     aggr->id = ftserver->aggr_entries.ftserver_aggrEntries_val[ftserver->aggr_index].Id;
+		     sv = sv_newmortal();
+		     sv_setref_pv(sv, "DCE::DFS::aggregate", (void *)aggr);
+		   }
+		 else
+		   {
+		     free(aggr);
+		   }
 	       }
 	     else
 	       status = sec_s_no_memory;
@@ -1093,7 +1034,7 @@ ftserver(aggr)
      {
        DCE__DFS__ftserver ftserver;
        error_status_t status = 0;
-       SV *sv = &sv_undef;
+       SV *sv = &PL_sv_undef;
        
        if (ftserver = (DCE__DFS__ftserver)malloc(sizeof(ftserver_obj)))
 	 {
@@ -1182,7 +1123,7 @@ ftserver(fileset, ftserver_index = -1)
      {
        DCE__DFS__ftserver ftserver;
        error_status_t status = 0;
-       SV *sv = &sv_undef;
+       SV *sv = &PL_sv_undef;
        int index = ((ftserver_index == -1) ? fileset->ftserver_rw_index : ftserver_index);
 
        if (index < 0 || index >= fileset->entry.nServers)
@@ -1218,7 +1159,7 @@ aggregate(fileset, ftserver_index = -1)
        DCE__DFS__aggregate aggr;
        error_status_t status = 0;
        int index = ((ftserver_index == -1) ? fileset->ftserver_rw_index : ftserver_index);
-       SV *sv = &sv_undef;
+       SV *sv = &PL_sv_undef;
 
        if (index < 0 || index >= fileset->entry.nServers)
 	 status = REP_ERR_INVAL_PARAM;
@@ -1232,21 +1173,17 @@ aggregate(fileset, ftserver_index = -1)
 
 	   if (!status) {
 	     
-	     TRY
-	       status = FTSERVER_AggregateInfo(fileset->ftserver_h[index],
-					       fileset->entry.sitePartition[index], &aggr->aggr_info);
-	     CATCH_ALL
-	       status = THIS_CATCH->status.status;
-	     ENDTRY
+	     status = FTSERVER_AggregateInfo(fileset->ftserver_h[index],
+					     fileset->entry.sitePartition[index], &aggr->aggr_info);
 	       
-	       if (!status)
-		 {
-		   rpc_binding_copy(fileset->ftserver_h[index], &aggr->ftserver_h, &status);
-		   aggr->addr = fileset->entry.siteAddr[index];
-		   aggr->id = fileset->entry.sitePartition[index];
-		   sv = sv_newmortal();
-		   sv_setref_pv(sv, "DCE::DFS::aggregate", (void *)aggr);
-		 }
+	     if (!status)
+	       {
+		 rpc_binding_copy(fileset->ftserver_h[index], &aggr->ftserver_h, &status);
+		 aggr->addr = fileset->entry.siteAddr[index];
+		 aggr->id = fileset->entry.sitePartition[index];
+		 sv = sv_newmortal();
+		 sv_setref_pv(sv, "DCE::DFS::aggregate", (void *)aggr);
+	       }
 	   }
 	 }
        XPUSHs(sv);
