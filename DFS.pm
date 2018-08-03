@@ -1,5 +1,5 @@
 #
-# DFS-Perl version 0.20
+# DFS-Perl version 0.25
 #
 # Paul Henson <henson@acm.org>
 #
@@ -23,20 +23,20 @@ require AutoLoader;
 
 @EXPORT = qw();
 
-$VERSION = '0.20';
+$VERSION = '0.25';
 
 sub AUTOLOAD {
     my $constname;
     ($constname = $AUTOLOAD) =~ s/.*:://;
     my $val = constant($constname, @_ ? $_[0] : 0);
     if ($! != 0) {
-	if ($! =~ /Invalid/) {
-	    $AutoLoader::AUTOLOAD = $AUTOLOAD;
-	    goto &AutoLoader::AUTOLOAD;
-	}
-	else {
-		croak "Your vendor has not defined DCE::DFS macro $constname";
-	}
+        if ($! =~ /Invalid/) {
+            $AutoLoader::AUTOLOAD = $AUTOLOAD;
+            goto &AutoLoader::AUTOLOAD;
+        }
+        else {
+                croak "Your vendor has not defined DCE::DFS macro $constname";
+        }
     }
     eval "sub $AUTOLOAD { $val }";
     goto &$AUTOLOAD;
@@ -53,43 +53,51 @@ sub acl {
     my $self = {};
     $self->{acl_type} = ($acl_type ne "") ? ($acl_type) : type_object;
     my $entry;
+    my $uuid;
+    my $fuuid;
+    my $cell;
     my $entry_key;
-    my $pgo_name;
     my $status;
 
     ($self->{acl_h}, $status) = DCE::ACL->bind($path);
     return (undef, $status) if $status;
 
     $self->{manager} = $self->{acl_h}->get_manager_types->[0];
-
     
     if (!($self->{rgy} = $rgy)) {
-	($self->{rgy}, $status) = DCE::Registry->site_default();
-	return (undef, $status) if $status;
+        ($self->{rgy}, $status) = DCE::Registry->site_default();
+        return (undef, $status) if $status;
     }
 
-    ($self->{acl_list}, $status) = $self->{acl_h}->lookup($self->{manager},
-							  $self->{acl_type});
+    ($self->{acl_list}, $status) = $self->{acl_h}->lookup($self->{manager}, $self->{acl_type});
     return (undef, $status) if $status;
 
     $self->{acls} = $self->{acl_list}->acls;
 
     foreach $entry ($self->{acls}->entries) {
-	$entry_key = $self->{acl_h}->type($entry->entry_info->{entry_type});
-	if ($entry_key eq "user") {
-	    ($pgo_name, $status) =
-		$self->{rgy}->pgo_id_to_name($self->{rgy}->domain_person,
-					     $entry->entry_info->{id}{uuid});
-	    $entry_key .= ($status) ? (":<unknown>") : (":" . $pgo_name);
+        $entry_key = $self->{acl_h}->type($entry->entry_info->{entry_type});
+        if (($entry_key eq "user") || ($entry_key eq "group") || ($entry_key eq "foreign_other")) {
+	    $cell = "";
+	    $uuid = $entry->entry_info->{id}{uuid};
+	    $fuuid = "";
+	    $entry_key .= ":" . $uuid;
 	}
-	elsif ($entry_key eq "group") {
-	    ($pgo_name, $status) =
-		$self->{rgy}->pgo_id_to_name($self->{rgy}->domain_group,
-					     $entry->entry_info->{id}{uuid});
-	    $entry_key .= ($status) ? (":<unknown>") : (":" . $pgo_name);
+	elsif (($entry_key eq "foreign_user") || ($entry_key eq "foreign_group")) {
+	    $cell = $entry->entry_info->{foreign_id}{realm}{uuid};
+	    $uuid = "";
+	    $fuuid = $entry->entry_info->{foreign_id}{id}{uuid};
+	    $entry_key .= ":" . $fuuid;
 	}
+	else {
+	    $cell = "";
+	    $uuid = "";
+	    $fuuid = "";
+	}
+
 	$self->{entries}{$entry_key} = { entry_type => $entry->entry_info->{entry_type},
-					 uuid => $entry->entry_info->{id}{uuid},
+					 cell => $cell,
+					 uuid => $uuid,
+					 fuuid => $fuuid,
 					 perms => $entry->perms,
 				     };
     }
@@ -102,9 +110,51 @@ sub DCE::DFS::acl::entries {
     my $self = shift;
     my %entries;
     my $entry_key;
+    my $entry_type;
+    my $entry_uuid;
+    my $pgo_name;
+    my $cell_name;
+    my $status;
 
     foreach $entry_key (keys %{$self->{entries}}) {
-	$entries{$entry_key} = perms_to_text($self->{entries}{$entry_key}{perms});
+	($entry_type, $entry_uuid) = split(/:/, $entry_key);
+
+	if ($entry_uuid) {
+	    if (!($pgo_name = $self->{entries}{$entry_key}{name})) {
+		if ($entry_type eq "user") {
+		    ($pgo_name, $status ) = $self->{rgy}->pgo_id_to_name($self->{rgy}->domain_person, $entry_uuid);
+		}
+		elsif ($entry_type eq "group") {
+		    ($pgo_name, $status ) = $self->{rgy}->pgo_id_to_name($self->{rgy}->domain_group, $entry_uuid);
+		}
+		elsif ($entry_type eq "foreign_other") {
+		    ($pgo_name, $status ) = $self->{rgy}->pgo_id_to_name($self->{rgy}->domain_person, $entry_uuid);
+		    $pgo_name = "/..." . substr($pgo_name,6);
+		}
+		elsif ($entry_type eq "foreign_user") {
+		    ($cell_name, $status) = id_to_cell_name($self, $self->{entries}{$entry_key}{cell});
+		    if (!$status) {
+			($pgo_name, $status) = $self->{cells}{$cell_name}->pgo_id_to_name($self->{rgy}->domain_person,
+											  $self->{entries}{$entry_key}{fuuid});
+			$pgo_name = $cell_name . "/" . $pgo_name;
+		    }
+		}
+		elsif ($entry_type eq "foreign_group") {
+		    ($cell_name, $status) = id_to_cell_name($self, $self->{entries}{$entry_key}{cell});
+		    if (!$status) {
+			($pgo_name, $status) = $self->{cells}{$cell_name}->pgo_id_to_name($self->{rgy}->domain_group,
+											  $self->{entries}{$entry_key}{fuuid});
+			$pgo_name = $cell_name . "/" . $pgo_name;
+		    }
+		}
+
+		$pgo_name = $entry_uuid if $status;
+		$self->{entries}{$entry_key}{name} = $pgo_name;
+	    }
+	    $entry_type .= ":" . $pgo_name;
+	}
+
+	$entries{$entry_type} = perms_to_text($self->{entries}{$entry_key}{perms});
     }
 
     return \%entries;
@@ -113,12 +163,24 @@ sub DCE::DFS::acl::entries {
 sub DCE::DFS::acl::entry {
     my $self = shift;
     my ($entry_key) = @_;
+    my $entry_type;
+    my $entry_name;
+    my $entry_uuid;
+    my $status;
 
+    ($entry_type, $entry_name) = split(/:/, $entry_key);
+
+    if ($entry_name) {
+	($entry_uuid, $status) = name_to_id($self, $entry_type, $entry_name);
+	return (undef, $status) if $status;
+	$entry_key = $entry_type . ":" . $entry_uuid;
+    }
+    
     if ($self->{entries}{$entry_key}) {
-	return (perms_to_text($self->{entries}{$entry_key}{perms}));
+	return (perms_to_text($self->{entries}{$entry_key}{perms}), 0);
     }
     else {
-	return undef;
+	return (undef, 387063834); # sec_acl_object_not_found
     }
 }
 
@@ -127,66 +189,78 @@ sub DCE::DFS::acl::modify {
     my ($entry_key, $text) = @_;
     my $entry_type;
     my $entry_name;
-    my $uuid;
+    my $entry_uuid;
     my $status;
+
+    ($entry_type, $entry_name) = split(/:/, $entry_key);
+
+    if ($entry_name) {
+	($entry_uuid, $status) = name_to_id($self, $entry_type, $entry_name);
+	return $status if $status;
+	$entry_key = $entry_type . ":" . $entry_uuid;
+    }
 
     if ($self->{entries}{$entry_key}) {
 	$self->{entries}{$entry_key}{perms} = text_to_perms($text);
     }
     else {
-	($entry_type, $entry_name) = split(/:/, $entry_key);
-	if ($entry_type =~ /^user_obj$/) {
-	    $self->{entries}{$entry_key}{entry_type} = DCE::ACL::type_user_obj;
-	}
-	elsif ($entry_type =~ /^group_obj$/) {
-	    $self->{entries}{$entry_key}{entry_type} = DCE::ACL::type_group_obj;
-	}
-	elsif ($entry_type =~ /^other_obj$/) {
-	    $self->{entries}{$entry_key}{entry_type} = DCE::ACL::type_other_obj;
-	}
-	elsif ($entry_type =~ /^any_other$/) {
-	    $self->{entries}{$entry_key}{entry_type} = DCE::ACL::type_any_other;
-	}
-	elsif ($entry_type =~ /^mask_obj$/) {
-	    $self->{entries}{$entry_key}{entry_type} = DCE::ACL::type_mask_obj;
-	}
-	elsif ($entry_type =~ /^user$/) {
-	    ($uuid, $status) = 
-		$self->{rgy}->pgo_name_to_id($self->{rgy}->domain_person, $entry_name);
-	    return $status if $status;
-	    $self->{entries}{$entry_key}{entry_type} = DCE::ACL::type_user;
-	    $self->{entries}{$entry_key}{uuid} = $uuid;
-	}
-	elsif ($entry_type =~ /^group$/) {
-	    ($uuid, $status) = 
-		$self->{rgy}->pgo_name_to_id($self->{rgy}->domain_group, $entry_name);
-	    return $status if $status;
-	    $self->{entries}{$entry_key}{entry_type} = DCE::ACL::type_group;
-	    $self->{entries}{$entry_key}{uuid} = $uuid;
-	}
-	else {
+	if (($self->{entries}{$entry_key}{entry_type} = DCE::ACL->type($entry_type)) eq "") {
 	    return -1;
 	}
+	if (($entry_type eq "user") || ($entry_type eq "group") || ($entry_type eq "foreign_other")) {
+	    $self->{entries}{$entry_key}{uuid} = $entry_uuid;
+	}
+	elsif (($entry_type eq "foreign_user") || ($entry_type eq "foreign_group")) {
+	    $self->{entries}{$entry_key}{fuuid} = $entry_uuid;
+
+	    $entry_name =~ s#^/\.\.\./##;
+	    ($entry_name) = split("/", $entry_name);
+	    $entry_name = "/.../" . $entry_name;
+	    
+	    ($entry_uuid, $status) = name_to_id($self, "foreign_other", $entry_name);
+	    return $status if $status;
+
+	    $self->{entries}{$entry_key}{cell} = $entry_uuid;
+	}
+
+	$self->{entries}{$entry_key}{cell} = "" unless ($self->{entries}{$entry_key}{cell});
 	$self->{entries}{$entry_key}{uuid} = "" unless ($self->{entries}{$entry_key}{uuid});
+	$self->{entries}{$entry_key}{fuuid} = "" unless ($self->{entries}{$entry_key}{fuuid});
 	$self->{entries}{$entry_key}{perms} = text_to_perms($text),
     }
+
     return 0;
 }
-
 
 sub DCE::DFS::acl::delete {
     my $self = shift;
     my ($entry_key) = @_;
+    my $entry_type;
+    my $entry_name;
+    my $entry_uuid;
+    my $status;
+
+    ($entry_type, $entry_name) = split(/:/, $entry_key);
+
+    if ($entry_name) {
+	($entry_uuid, $status) = name_to_id($self, $entry_type, $entry_name);
+	return $status if $status;
+	$entry_key = $entry_type . ":" . $entry_uuid;
+    }
 
     if ($self->{entries}{$entry_key}) {
-	undef $self->{entries}{$entry_key};
+	delete $self->{entries}{$entry_key};
+
+	return 0;
     }
+
+    return 387063834; # sec_acl_object_not_found
 }
 
 sub DCE::DFS::acl::deleteall {
     my $self = shift;
 
-    undef $self->{entries};
+    delete $self->{entries};
 }
 
 sub DCE::DFS::acl::calc_mask {
@@ -195,8 +269,8 @@ sub DCE::DFS::acl::calc_mask {
     my $mask_perms;
 
     foreach $entry_key (keys %{$self->{entries}}) {
-	next if ($self->{entries}{$entry_key}{entry_type} == DCE::ACL->type_user_obj);
-	next if ($self->{entries}{$entry_key}{entry_type} == DCE::ACL->type_mask_obj);
+	next if (($self->{entries}{$entry_key}{entry_type} == DCE::ACL->type_user_obj) ||
+		 ($self->{entries}{$entry_key}{entry_type} == DCE::ACL->type_mask_obj));
 	$mask_perms |= $self->{entries}{$entry_key}{perms};
     }
 
@@ -204,7 +278,9 @@ sub DCE::DFS::acl::calc_mask {
 	$self->{entries}{mask_obj}{entry_type} = DCE::ACL::type_mask_obj;
         $self->{entries}{mask_obj}{uuid} = "";
     }
+
     $self->{entries}{mask_obj}{perms} = $mask_perms;
+
 }
 
 sub DCE::DFS::acl::commit {
@@ -215,7 +291,9 @@ sub DCE::DFS::acl::commit {
 
     if (!($self->{entries}{user_obj})) {
 	$self->{entries}{user_obj}{entry_type} = DCE::ACL::type_user_obj;
+	$self->{entries}{user_obj}{cell} = "";
 	$self->{entries}{user_obj}{uuid} = "";
+	$self->{entries}{user_obj}{fuuid} = "";
 	$self->{entries}{user_obj}{perms} = 0;
     }
 
@@ -223,13 +301,17 @@ sub DCE::DFS::acl::commit {
 
     if (!($self->{entries}{group_obj})) {
         $self->{entries}{group_obj}{entry_type} = DCE::ACL::type_group_obj;
-        $self->{entries}{group_obj}{uuid} = "";
+	$self->{entries}{user_obj}{cell} = "";
+	$self->{entries}{user_obj}{uuid} = "";
+	$self->{entries}{user_obj}{fuuid} = "";
 	$self->{entries}{group_obj}{perms} = 0;
     }
 
     if (!($self->{entries}{other_obj})) {
         $self->{entries}{other_obj}{entry_type} = DCE::ACL::type_other_obj;
-        $self->{entries}{other_obj}{uuid} = "";
+	$self->{entries}{user_obj}{cell} = "";
+	$self->{entries}{user_obj}{uuid} = "";
+	$self->{entries}{user_obj}{fuuid} = "";
 	$self->{entries}{other_obj}{perms} = 0;
     }
 
@@ -246,6 +328,16 @@ sub DCE::DFS::acl::commit {
 				 uuid => $self->{entries}{$entry_key}{uuid},
 				 name => "",
 			     },
+			     foreign_id => {
+				 realm => {
+				     uuid => $self->{entries}{$entry_key}{cell},
+				     name => "",
+				 },
+				 id => {
+				     uuid => $self->{entries}{$entry_key}{fuuid},
+				     name => "",
+				 },
+			     }
 			 });
 	$entry->perms($self->{entries}{$entry_key}{perms});
 	$status = $self->{acls}->add($entry);
@@ -254,6 +346,77 @@ sub DCE::DFS::acl::commit {
 
     $status = $self->{acl_h}->replace($self->{manager}, $self->{acl_type}, $self->{acl_list});
     return $status;
+}
+
+sub name_to_id {
+    my ($self, $entry_type, $entry_name) = @_;
+    my $cell_name;
+    my $pgo_name;
+    my $entry_uuid;
+    my $status;
+
+    if ($self->{pgo_uuids}{$entry_name}) {
+	return ($self->{pgo_uuids}{$entry_name}, 0);
+    }
+
+    if ($entry_type eq "user") {
+	($entry_uuid, $status) = $self->{rgy}->pgo_name_to_id($self->{rgy}->domain_person, $entry_name);
+    }
+    elsif ($entry_type eq "group") {
+	($entry_uuid, $status) = $self->{rgy}->pgo_name_to_id($self->{rgy}->domain_group, $entry_name);
+    }
+    elsif ($entry_type eq "foreign_other") {
+	$entry_name =~ s#^/\.\.\.#krbtkt#;
+	($entry_uuid, $status) = $self->{rgy}->pgo_name_to_id($self->{rgy}->domain_person, $entry_name);
+    }
+    elsif ($entry_type eq "foreign_user") {
+	$entry_name =~ s#^/\.\.\./##;
+	($cell_name, $pgo_name) = split("/", $entry_name, 2);
+	$cell_name = "/.../" . $cell_name;
+
+	if (!$self->{cells}{$cell_name}) {
+	    ($self->{cells}{$cell_name}, $status) = $self->{rgy}->site_open_query($cell_name);
+	    return (undef, $status) if $status;
+	}
+	($entry_uuid, $status) = $self->{cells}{$cell_name}->pgo_name_to_id($self->{rgy}->domain_person, $pgo_name);
+    }
+    elsif ($entry_type eq "foreign_group") {
+	$entry_name =~ s#^/\.\.\./##;
+	($cell_name, $pgo_name) = split("/", $entry_name, 2);
+	$cell_name = "/.../" . $cell_name;
+
+	if (!$self->{cells}{$cell_name}) {
+	    ($self->{cells}{$cell_name}, $status) = $self->{rgy}->site_open_query($cell_name);
+	    return (undef, $status) if $status;
+	}
+	($entry_uuid, $status) = $self->{cells}{$cell_name}->pgo_name_to_id($self->{rgy}->domain_group, $pgo_name);
+    }
+    else {
+	return (undef, -1);
+    }
+
+    return (undef, $status) if $status;
+
+    $self->{pgo_uuids}{$entry_name} = $entry_uuid;
+
+    return ($entry_uuid, 0);
+}
+
+sub id_to_cell_name {
+    my ($self, $cell) = @_;
+    my $cell_name;
+    my $status;
+
+    ($cell_name, $status) = $self->{rgy}->pgo_id_to_name($self->{rgy}->domain_person, $cell);
+    return (undef, $status) if $status;
+
+    $cell_name = "/..." . substr($cell_name,6);
+
+    if (!$self->{cells}{$cell_name}) {
+	($self->{cells}{$cell_name}, $status) = $self->{rgy}->site_open_query($cell_name);
+	return (undef, $status) if $status;
+    }
+    return ($cell_name, 0);
 }
 
 sub perms_to_text {

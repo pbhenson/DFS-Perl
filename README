@@ -20,19 +20,24 @@ DCE-Perl is available via CPAN, or via the URL:
 http://www.intranet.csupomona.edu/~henson/www/projects/DCE-Perl/
 
 
-The lastest version of DCE-Perl available as of this writing is 0.16.
-Earlier versions will not work with this release of DFS-Perl, although
-later versions probably will.
+The lastest version of DCE-Perl available as of this writing is 0.17,
+which fixes a bug involving foreign ACL types. If you are using an earlier
+version of DCE-Perl, please upgrade before proceeding.
+
 
 Once DCE-Perl has been successfully installed, you need to read the file
 README.LIBDCEDFS and verify that libdcedfs.a and the necessary header files
-are available on your system.
+are available on your system. If you are unable to acquire or build an
+appropriate libdcedfs.a, you can build an ACL only version of DFS-Perl by
+typing "rm DFS.xs; ln -s DFS-crippled.xs DFS.xs" in the distribution
+directory, and removing the reference to libdcedfs.a from Makefile.PL
+before proceeding.
 
 
 Once these prerequisites are met, you can build and install DFS-Perl by
 running the following commands:
 
-     cd /path/to/DFS-Perl-0.20
+     cd /path/to/DFS-Perl-0.25
      perl Makefile.PL
      make
      make install
@@ -40,6 +45,25 @@ running the following commands:
 
 Changes
 -------
+
+0.25 - Optimized internal ACL data representation to delay registry lookups
+       until needed, and cache all lookups to avoid redundant registry
+       access. Thanks to Reggie Hunt <rhunt@hunt.llnl.gov> for the
+       suggestion.
+
+     - The $acl->entry() method now returns an array of ($perms, $status).
+       Any existing code must be modified to take this change into
+       account. In particular, if you use aclmod, be sure to acquire and
+       install version 1.1 (or newer), which has been modified to conform
+       with the API change.
+
+     - Added support for foreign ACL types. Thanks much to Reggie Hunt
+       <rhunt@hunt.llnl.gov> for supplying the code upon which this support
+       is based.
+
+     - Ability to build an ACL-only version for those platforms unable to
+       acquire or compile libdcedfs.
+
 
 0.20 - Added ability to pass in an open registry handle to ACL bind method.
        Useful when used in account creation scripts when a connection

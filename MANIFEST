@@ -7,3 +7,5 @@ README.LIBDCEDFS
 typemap
 utilities/dfs_usage.pl
 MANIFEST
+DFS-full.xs
+DFS-crippled.xs
