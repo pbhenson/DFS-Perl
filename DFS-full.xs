@@ -21,35 +21,33 @@ extern "C" {
 #include <dce/exc_handling.h>
 #include <dce/secsts.h>
 #include <dce/sec_login.h>
+#include <dce/pthread.h>
+#include <dcedfs/param.h>
+#include <dcedfs/stds.h>
 #include <dcedfs/common_data.h>
-#include <dcedfs/compat.h>
-#include <dcedfs/flserver.h>
-#include <dcedfs/flclient.h>
-#include <dcedfs/ftserver.h>
+#include <dcedfs/sysincludes.h>
 #include <dcedfs/ftserver_proc.h>
-#include <dcedfs/ftserver_data.h>
-#include <dcedfs/ioctl.h>
+#include <dcedfs/queue.h> 
 #include <dcedfs/volume.h>
 #include <dcedfs/vol_errs.h>
-
+#include <dcedfs/fldb_data.h>
+#include <dcedfs/flserver.h>
+#include <dcedfs/ftserver.h>
+#include <dcedfs/ftserver_trans.h>
+#include <dcedfs/compat.h>
+#include <dcedfs/ioctl.h>
+#include <dcedfs/fldb_proc.h>
+#include <dcedfs/cm.h>
+#include <dcedfs/ftserver_data.h>
+#include <dcedfs/aggr.h>
+#include <dcedfs/afs4int.h>
+#include <dcedfs/rep_data.h>
 #include "EXTERN.h"
 #include "perl.h"
 #include "XSUB.h"
 #ifdef __cplusplus
 }
 #endif
-
-#define VIOC_AFS_CREATE_MT_PT   _AFSIOCTL(25)
-
-struct cm_CreateMountPoint {
-    unsigned32 nameOffset;
-    unsigned32 nameLen;
-    unsigned32 nameTag;
-    unsigned32 pathOffset;
-    unsigned32 pathLen;
-    unsigned32 pathTag;
-    /* data for name and path follows here */
-};
 
 typedef afsFid *DCE__DFS__fid;
 
@@ -1319,14 +1317,7 @@ quota(fileset)
      DCE::DFS::fileset fileset
      CODE:
      {
-       afsHyper hyper;
-       int quota;
-       
-       hset(hyper, fileset->status.vsd.visQuotaLimit);
-       hrightshift(hyper, 10);
-       hget32(quota, hyper);
-
-       RETVAL = quota;
+       RETVAL = ((0xffc00000 & (AFS_hgethi(fileset->status.vsd.visQuotaLimit) << 22)) | (0x003fffff & (AFS_hgetlo(fileset->status.vsd.visQuotaLimit) >> 10)));
      }
      OUTPUT:
        RETVAL
@@ -1336,14 +1327,7 @@ used(fileset)
      DCE::DFS::fileset fileset
      CODE:
      {
-       afsHyper hyper;
-       int used;
-       
-       hset(hyper, fileset->status.vsd.visQuotaUsage);
-       hrightshift(hyper, 10);
-       hget32(used, hyper);
-
-       RETVAL = used;
+       RETVAL = ((0xffc00000 & (AFS_hgethi(fileset->status.vsd.visQuotaUsage) << 22)) | (0x003fffff & (AFS_hgetlo(fileset->status.vsd.visQuotaUsage) >> 10)));
      }
      OUTPUT:
        RETVAL
@@ -1362,8 +1346,8 @@ set_quota(fileset, quota)
 					 FLAGS_ENCODE(FTSERVER_OP_SETSTATUS, VOLERR_TRANS_SETQUOTA),
 					 &trans_id)))
 	 {
-	   hset32(ft_status.vsd.visQuotaLimit, quota);
-	   hleftshift(ft_status.vsd.visQuotaLimit, 10);
+	   AFS_hset32(ft_status.vsd.visQuotaLimit, quota);
+	   AFS_hleftshift(ft_status.vsd.visQuotaLimit, 10);
 
 	   if (status = FTSERVER_SetStatus(fileset->ftserver_h, trans_id, VOL_STAT_VISLIMIT, &ft_status, 0))
 	     FTSERVER_AbortTrans(fileset->ftserver_h, trans_id);

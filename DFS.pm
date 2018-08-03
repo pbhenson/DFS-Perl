@@ -1,5 +1,5 @@
 #
-# DFS-Perl version 0.25
+# DFS-Perl version 0.30
 #
 # Paul Henson <henson@acm.org>
 #
@@ -23,7 +23,7 @@ require AutoLoader;
 
 @EXPORT = qw();
 
-$VERSION = '0.25';
+$VERSION = '0.30';
 
 sub AUTOLOAD {
     my $constname;
