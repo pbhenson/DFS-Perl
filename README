@@ -1,0 +1,67 @@
+
+Introduction
+------------
+
+DFS-Perl is a perl module interface to various aspects of DFS. Currently,
+the only interface available is a simple API to manipulate DFS ACLs.
+Future releases will include functionality that allows you to get
+information about file servers, aggregates, and filesets via perl.
+
+This version of DFS-Perl was released solely because I wanted to
+release my aclmod utility, which depends on the ACL API implemented
+by this module. There isn't really any documentation for the ACL API,
+although it's very simple and easy to use. If you are unable to use
+the API without documentation, please wait for the next release, which
+will include reasonable documentation as well as additional
+functionality.
+
+
+Installation
+------------
+
+Before installing DFS-Perl, you need to have DCE-Perl installed and
+configured on your system.
+
+DCE-Perl is available via CPAN, or via the URL:
+
+http://www.osf.org/~dougm/perl/
+
+
+The lastest version of DCE-Perl available as of this writing is 0.14,
+which has a bug in the ACL module. If a new fixed version is not 
+yet available, you need to apply the patch in the file
+DCE-Perl-0.14.diff by running the following commands before building
+and installing DCE-Perl:
+
+     cd /path/to/DCE-Perl-0.14
+     patch -p1 -d . < /path/to/DFS-Perl-0.10/DCE-Perl-0.14.diff 
+
+
+Once DCE-Perl has been successfully installed, you can build and
+install DFS-Perl by running the following commands:
+
+     cd /path/to/DFS-Perl-0.10
+     perl Makefile.PL
+     make
+     make install
+
+
+Changes
+-------
+
+0.10 - First publicly released version.
+
+
+Feedback/Availability
+---------------------
+
+Please report any bugs or feature requests to <henson@acm.org>.
+
+I'd also be very interested to hear that you're using DFS-Perl. If you
+could send me an email describing how you use DCE/DFS at your site, and
+what value you receive from DFS-Perl, I'd really appreciate it.
+
+
+The latest version of DFS-Perl is currently available at
+
+http://www.intranet.csupomona.edu/~henson/www/projects/DFS-Perl/
