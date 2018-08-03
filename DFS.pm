@@ -1,9 +1,9 @@
 #
-# DFS-Perl version 0.30
+# DFS-Perl version 0.35
 #
 # Paul Henson <henson@acm.org>
 #
-# Copyright (c) 1997,1998 Paul Henson -- see COPYRIGHT file for details
+# Copyright (c) 1997,1998,1999 Paul Henson -- see COPYRIGHT file for details
 #
 
 package DCE::DFS;
@@ -23,7 +23,7 @@ require AutoLoader;
 
 @EXPORT = qw();
 
-$VERSION = '0.30';
+$VERSION = '0.35';
 
 sub AUTOLOAD {
     my $constname;
@@ -43,6 +43,17 @@ sub AUTOLOAD {
 }
 
 bootstrap DCE::DFS $VERSION;
+
+sub DCE::DFS::flserver::status_endoflist {676372514}
+sub DCE::DFS::ftserver::status_endoflist {676372514}
+
+sub DCE::DFS::flserver::type_rw {0}
+sub DCE::DFS::flserver::type_ro {1}
+sub DCE::DFS::flserver::type_bk {2}
+
+sub DCE::DFS::fileset::type_rw {0}
+sub DCE::DFS::fileset::type_ro {1}
+sub DCE::DFS::fileset::type_bk {2}
 
 sub type_object {0}
 sub type_default_object {1}
@@ -470,19 +481,19 @@ use DCE::DFS;
 
 =over 4
 
-=item DCE::DFS::cellname(path)
+=item $cellname = DCE::DFS::cellname(path)
 
 
 
-=item DCE::DFS::crmount(path, fileset, read_write)
+=item $status = DCE::DFS::crmount(path, fileset, read_write = 0)
 
 
 
-=item DCE::DFS::delmount(path)
+=item $status = DCE::DFS::delmount(path)
 
 
 
-=item DCE::DFS::fid(path)
+=item ($fid, $status) = DCE::DFS::fid(path)
 
 
 
@@ -494,7 +505,7 @@ use DCE::DFS;
 
 =over 4
 
-=item DCE::DFS::acl(path, acl_type, registry_handle);
+=item ($acl, $status) = DCE::DFS::acl(path, acl_type, registry_handle);
 
 
 
@@ -534,7 +545,18 @@ use DCE::DFS;
 
 =over 4
 
-=item DCE::DFS::flserver(cell_fs)
+=item $flserver->status_endoflist
+
+=item $flserver->type_rw
+=item $flserver->type_ro
+=item $flserver->type_bk
+
+
+=item $id = $fid->id
+
+
+
+=item ($flserver, $status) = DCE::DFS::flserver(cell_fs = "/.:/fs")
 
 
 
@@ -542,7 +564,11 @@ use DCE::DFS;
 
 
 
-=item $flserver->fileset_mask_reset()
+=item $flserver->ftserver_by_name(name)
+
+
+
+=item $flserver->fileset_reset()
 
 
 
@@ -552,6 +578,9 @@ use DCE::DFS;
 
 =item $flserver->fileset_mask_aggregate(aggregate)
 
+
+
+=item $flserver->fileset_mask_type(type)
 
 
 =item $flserver->fileset()
@@ -570,6 +599,7 @@ use DCE::DFS;
 
 =head1 ftserver methods
 
+=item $ftserver->status_endoflist
 
 
 =over 4
@@ -629,19 +659,28 @@ use DCE::DFS;
 
 =over 4
 
-=item $fileset->ftserver()
+=item $fileset->type_rw
+=item $fileset->type_ro
+=item $fileset->type_bk
 
-=item $fileset->aggregate()
+=item $fileset->ftserver(ftserver_index = -1)
+
+=item $fileset->aggregate(ftserver_index = -1)
 
 =item $fileset->name()
 
-=item $fileset->quota()
+=item $fileset->ftserver_count()
 
-=item $fileset->used()
+=item $fileset->ftserver_index(ftserver)
+
+=item $fileset->exists(fileset_type, ftserver_index = -1)
+
+=item $fileset->usage(ftserver_index = -1, fileset_type = 0)
+
+=item $fileset->quota()
 
 =item $fileset->set_quota(quota)
 
-=item $fileset->update()
 
 =back
 

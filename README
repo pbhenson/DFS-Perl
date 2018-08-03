@@ -17,12 +17,12 @@ configured on your system.
 
 DCE-Perl is available via CPAN, or via the URL:
 
-http://www.intranet.csupomona.edu/~henson/www/projects/DCE-Perl/
+http://www.csupomona.edu/~henson/www/projects/DCE-Perl/
 
 
-The lastest version of DCE-Perl available as of this writing is 0.17,
-which fixes a bug involving foreign ACL types. If you are using an earlier
-version of DCE-Perl, please upgrade before proceeding.
+The lastest version of DCE-Perl available as of this writing is 0.19.
+If you are using an earlier version of DCE-Perl, please upgrade before
+proceeding.
 
 
 Once DCE-Perl has been successfully installed, you need to read the file
@@ -37,7 +37,7 @@ before proceeding.
 Once these prerequisites are met, you can build and install DFS-Perl by
 running the following commands:
 
-     cd /path/to/DFS-Perl-0.25
+     cd /path/to/DFS-Perl-0.35
      perl Makefile.PL
      make
      make install
@@ -45,6 +45,41 @@ running the following commands:
 
 Changes
 -------
+
+0.35 - fileset, flserver and ftserver objects enhanced to include
+       information about RW, RO, and BK filesets in various locations,
+       and the following new methods:
+
+         $fileset->exists(fileset_type, ftserver_index)
+         $fileset->ftserver_count()
+         $fileset->ftserver_index(ftserver)
+         $fileset->type_bk
+         $fileset->type_ro
+         $fileset->type_rw
+         $fileset->usage(ftserver_index, fileset_type)
+         $flserver->fileset_mask_type(type)
+         $flserver->ftserver_by_name(name)
+         $flserver->status_endoflist
+         $flserver->type_bk
+         $flserver->type_ro
+         $flserver->type_rw
+         $ftserver->status_endoflist
+
+     - Minor updates to compile cleanly with threaded Perl.
+
+     - Added examples illustrating API usage.
+
+     - Enhanced dfs_usage.pl utility. There are still some bugs in
+       the read/write statistics reporting at the fileserver/cell
+       level, but I don't know when I'll get around to fixing them
+       and I didn't want to hold up the release any longer.
+
+
+0.30 - Updated for DFS 1.2.2 API (in particular, Transarc DCE/DFS 2.0 for
+       Solaris 2.6).
+
+     - Note: never released internal version.
+
 
 0.25 - Optimized internal ACL data representation to delay registry lookups
        until needed, and cache all lookups to avoid redundant registry
@@ -70,10 +105,10 @@ Changes
        to the master registry is needed. If no handle is supplied, the
        default registry handle will be used.
 
-       Added exception handling for DFS RPCs, and fault tolerance for
+     - Added exception handling for DFS RPCs, and fault tolerance for
        flserver calls.
 
-       New methods:
+     - New methods:
 
          -- DCE::DFS::crmount(), for creating mount points
 
@@ -88,9 +123,9 @@ Changes
          -- DCE::DFS::fileset::aggregate(), to acquire an aggregate object
             from a fileset object
 
-       Added skeleton of documentation.
+     - Added skeleton of documentation.
 
-       Minor updates to dfs_usage.pl
+     - Minor updates to dfs_usage.pl
 
 
 0.15 - Beta release including new classes to interface to DFS flservers,
@@ -112,4 +147,4 @@ with a body of "subscribe dce-perl".
 
 The latest version of DFS-Perl is currently available at
 
-http://www.intranet.csupomona.edu/~henson/www/projects/DFS-Perl/
+http://www.csupomona.edu/~henson/www/projects/DFS-Perl/

@@ -4,50 +4,11 @@ header files, usually in /usr/include/dcedfs, and the client side RPC stubs
 for the various DFS servers, generally in the library libdcedfs. Different
 vendors may include one, both, or neither of the two.
 
-In particular, for Solaris 2.5/Transarc DCE 1.1 (the development platform
+In particular, for Solaris 2.6/Transarc DCE 2.0 (the development platform
 for DFS-Perl), Transarc includes the necessary DFS header files, but does not
-include libdcedfs.
-
-If you are a Transarc user, you can either retrieve a version of
-libdcedfs.a that I built, or you can follow the procedure described below
-to generate your own copy. If you use a different vendor's DCE, you can
-most likely follow this procedure to generate libdcedfs, but if you don't
-have header files, you might be out of luck. I believe you can put together
-your own header files as well, but have not looked into that in detail.
-
-
-A Solaris 2.5/Transarc DCE 1.1 libdcedfs can be found at the URL:
-
-http://www.intranet.csupomona.edu/~henson/www/projects/libdcedfs/libdcedfs.a
-
-
-To generate libdcedfs yourself, you need the application developers kit (in
-particular, the IDL compiler). Retrieve the DFS IDL files from the OSF web
-site via the URL:
-
-http://www.osf.org/mall/dce/SW-code/internal-idl.tar.gz
-
-Note that these are freely distributed by the OSF, but they require you
-to register before retrieving them via the URL:
-
-http://www.osf.org/cgi-bin/mall/register
-
-
-Once you have retrieved the file, untar it and execute the following
-commands (given in csh) to generate libdcedfs.a:
-
-     cd /path/to/internal-idl/file/
-     mkdir libdcedfs
-     cd libdcedfs
-     ln -s ../*/*.idl .
-     ln -s ../*/*/*.idl .
-     ln -s . dcedfs
-     rm afsvl_proc.idl
-     foreach file (*.idl)
-       idl -I. -server none -cc_cmd 'gcc -c' $file
-     end
-     ar -r libdcedfs.a *.o
-
+include libdcedfs. At this time, Transarc is planning to distribute the
+necessary library, but has not yet done so. For the latest status on this
+issue, contact your Transarc technical support representative.
 
 The default DFS-Perl configuration assumes libdcedfs.a is located in
 /usr/local/lib. If that is not correct at your site, you need to change the
